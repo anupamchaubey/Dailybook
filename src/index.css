@@ -1,0 +1,191 @@
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: #f5f5f5;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 900px;
+  margin: 1.5rem auto;
+  padding: 0 1rem;
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: #111827;
+  color: white;
+}
+
+.navbar a {
+  color: white;
+  text-decoration: none;
+  margin-left: 1rem;
+}
+
+.navbar a.active {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  margin-left: 1rem;
+  font: inherit;
+}
+
+.post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.post-card {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.post-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.meta {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+}
+
+.author {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.avatar,
+.avatar-large {
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+}
+
+.avatar-large {
+  width: 64px;
+  height: 64px;
+  margin-right: 1rem;
+}
+
+.tags {
+  margin-top: 0.5rem;
+}
+
+.tag {
+  margin-right: 0.5rem;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.post-form {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  background: #2563eb;
+  color: white;
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.search-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.search-bar input {
+  flex: 1 1 200px;
+}
+
+.pagination {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.post-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.entry-actions {
+  display: flex;
+  gap: 0.5rem;
+}
