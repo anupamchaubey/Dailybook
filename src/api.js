@@ -1,5 +1,6 @@
 // src/api.js
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "https://dailybook-x50p.onrender.com";
 
 // ---- Internal generic request helper ----
 async function request(path, { method = "GET", body, auth = true } = {}) {
