@@ -1,6 +1,55 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createEntry, getEntryById, updateEntry } from "../api";
+import { uploadImageToCloudinary } from "../cloudinary";
+
+const [imageUrl, setImageUrl] = useState("");
+const [uploadingImage, setUploadingImage] = useState(false);
+
+const entry = await getEntryById(id);
+setTitle(entry.title || "");
+setContent(entry.content || "");
+setVisibility(entry.visibility || "PRIVATE");
+setTagsInput((entry.tags || []).join(", "));
+setImageUrl(entry.imageUrl || "");          // 🌆
+
+async function handleImageChange(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  try {
+    setUploadingImage(true);
+    const url = await uploadImageToCloudinary(file);
+    setImageUrl(url);
+  } catch (err) {
+    setError(err.message || "Image upload failed");
+  } finally {
+    setUploadingImage(false);
+  }
+}
+
+const payload = {
+  title: title.trim(),
+  content: content.trim(),
+  tags,
+  visibility,
+  imageUrl: imageUrl || null,
+};
+
+<div className="form-group">
+  <label>Cover image (optional)</label>
+  <input type="file" accept="image/*" onChange={handleImageChange} />
+  {uploadingImage && <p>Uploading image...</p>}
+  {imageUrl && (
+    <div style={{ marginTop: "0.5rem" }}>
+      <img
+        src={imageUrl}
+        alt="Preview"
+        style={{ maxWidth: "100%", borderRadius: "8px" }}
+      />
+    </div>
+  )}
+</div>
 
 const VISIBILITY_OPTIONS = ["PUBLIC", "PRIVATE", "FOLLOWERS_ONLY"];
 

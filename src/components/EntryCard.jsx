@@ -11,6 +11,7 @@ function EntryCard({ entry, showAuthor = true }) {
     createdAt,
     authorUsername,
     authorProfilePicture,
+    imageUrl,
   } = entry;
 
   const fullContent = content || "";
@@ -37,6 +38,9 @@ function EntryCard({ entry, showAuthor = true }) {
 
       {createdAt && (
         <p className="meta">{new Date(createdAt).toLocaleString()}</p>
+      )}
+      {imageUrl && (
+        <img src={imageUrl} alt={title} className="entry-image" />
       )}
 
       <p className="entry-content">{fullContent}</p>
