@@ -13,10 +13,7 @@ function EntryCard({ entry, showAuthor = true }) {
     authorProfilePicture,
   } = entry;
 
-  const shortContent =
-    content && content.length > 180
-      ? content.slice(0, 180) + "..."
-      : content;
+  const fullContent = content || "";
 
   return (
     <article className="post-card">
@@ -42,7 +39,7 @@ function EntryCard({ entry, showAuthor = true }) {
         <p className="meta">{new Date(createdAt).toLocaleString()}</p>
       )}
 
-      <p>{shortContent}</p>
+      <p className="entry-content">{fullContent}</p>
 
       {tags && tags.length > 0 && (
         <div className="tags">
