@@ -1,55 +1,8 @@
+// EntryFormPage.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createEntry, getEntryById, updateEntry } from "../api";
 import { uploadImageToCloudinary } from "../cloudinary";
-
-const [imageUrl, setImageUrl] = useState("");
-const [uploadingImage, setUploadingImage] = useState(false);
-
-const entry = await getEntryById(id);
-setTitle(entry.title || "");
-setContent(entry.content || "");
-setVisibility(entry.visibility || "PRIVATE");
-setTagsInput((entry.tags || []).join(", "));
-setImageUrl(entry.imageUrl || "");          // 🌆
-
-async function handleImageChange(e) {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  try {
-    setUploadingImage(true);
-    const url = await uploadImageToCloudinary(file);
-    setImageUrl(url);
-  } catch (err) {
-    setError(err.message || "Image upload failed");
-  } finally {
-    setUploadingImage(false);
-  }
-}
-
-const payload = {
-  title: title.trim(),
-  content: content.trim(),
-  tags,
-  visibility,
-  imageUrl: imageUrl || null,
-};
-
-<div className="form-group">
-  <label>Cover image (optional)</label>
-  <input type="file" accept="image/*" onChange={handleImageChange} />
-  {uploadingImage && <p>Uploading image...</p>}
-  {imageUrl && (
-    <div style={{ marginTop: "0.5rem" }}>
-      <img
-        src={imageUrl}
-        alt="Preview"
-        style={{ maxWidth: "100%", borderRadius: "8px" }}
-      />
-    </div>
-  )}
-</div>
 
 const VISIBILITY_OPTIONS = ["PUBLIC", "PRIVATE", "FOLLOWERS_ONLY"];
 
@@ -62,13 +15,17 @@ function EntryFormPage({ mode }) {
   const [content, setContent] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [visibility, setVisibility] = useState("PRIVATE");
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
 
   useEffect(() => {
+    if (!isEdit) return;
+
     async function load() {
-      if (!isEdit) return;
       try {
         setLoading(true);
         const entry = await getEntryById(id);
@@ -76,14 +33,32 @@ function EntryFormPage({ mode }) {
         setContent(entry.content || "");
         setVisibility(entry.visibility || "PRIVATE");
         setTagsInput((entry.tags || []).join(", "));
+        setImageUrl(entry.imageUrl || "");
       } catch (e) {
         setError(e.message || "Failed to load entry");
       } finally {
         setLoading(false);
       }
     }
+
     load();
   }, [id, isEdit]);
+
+  async function handleImageChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setError("");
+      setUploadingImage(true);
+      const url = await uploadImageToCloudinary(file);
+      setImageUrl(url);
+    } catch (err) {
+      setError(err.message || "Image upload failed");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -104,6 +79,7 @@ function EntryFormPage({ mode }) {
       content: content.trim(),
       tags,
       visibility,
+      imageUrl: imageUrl || null,
     };
 
     try {
@@ -168,6 +144,22 @@ function EntryFormPage({ mode }) {
               </option>
             ))}
           </select>
+        </div>
+
+        {/* 📸 Image upload block */}
+        <div className="form-group">
+          <label>Cover image (optional)</label>
+          <input type="file" accept="image/*" onChange={handleImageChange} />
+          {uploadingImage && <p>Uploading image...</p>}
+          {imageUrl && (
+            <div style={{ marginTop: "0.5rem" }}>
+              <img
+                src={imageUrl}
+                alt="Preview"
+                style={{ maxWidth: "100%", borderRadius: "8px" }}
+              />
+            </div>
+          )}
         </div>
 
         <button type="submit" disabled={saving}>
