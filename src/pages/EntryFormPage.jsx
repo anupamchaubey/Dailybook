@@ -1,4 +1,3 @@
-// EntryFormPage.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createEntry, getEntryById, updateEntry } from "../api";
@@ -15,17 +14,16 @@ function EntryFormPage({ mode }) {
   const [content, setContent] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [visibility, setVisibility] = useState("PRIVATE");
-  const [imageUrl, setImageUrl] = useState("");
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUrls, setImageUrls] = useState([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
 
   useEffect(() => {
-    if (!isEdit) return;
-
     async function load() {
+      if (!isEdit) return;
       try {
         setLoading(true);
         const entry = await getEntryById(id);
@@ -33,30 +31,37 @@ function EntryFormPage({ mode }) {
         setContent(entry.content || "");
         setVisibility(entry.visibility || "PRIVATE");
         setTagsInput((entry.tags || []).join(", "));
-        setImageUrl(entry.imageUrl || "");
+        setImageUrls(entry.imageUrls || []); // multiple images
       } catch (e) {
         setError(e.message || "Failed to load entry");
       } finally {
         setLoading(false);
       }
     }
-
     load();
   }, [id, isEdit]);
 
+  function parseTags(input) {
+    return input
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+
   async function handleImageChange(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     try {
-      setError("");
-      setUploadingImage(true);
-      const url = await uploadImageToCloudinary(file);
-      setImageUrl(url);
+      setUploadingImages(true);
+      const urls = await Promise.all(
+        files.map((file) => uploadImageToCloudinary(file))
+      );
+      setImageUrls((prev) => [...prev, ...urls]);
     } catch (err) {
       setError(err.message || "Image upload failed");
     } finally {
-      setUploadingImage(false);
+      setUploadingImages(false);
     }
   }
 
@@ -69,17 +74,14 @@ function EntryFormPage({ mode }) {
       return;
     }
 
-    const tags = tagsInput
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const tags = parseTags(tagsInput);
 
     const payload = {
       title: title.trim(),
       content: content.trim(),
       tags,
       visibility,
-      imageUrl: imageUrl || null,
+      imageUrls, // send list of URLs to backend
     };
 
     try {
@@ -146,18 +148,25 @@ function EntryFormPage({ mode }) {
           </select>
         </div>
 
-        {/* 📸 Image upload block */}
         <div className="form-group">
-          <label>Cover image (optional)</label>
-          <input type="file" accept="image/*" onChange={handleImageChange} />
-          {uploadingImage && <p>Uploading image...</p>}
-          {imageUrl && (
-            <div style={{ marginTop: "0.5rem" }}>
-              <img
-                src={imageUrl}
-                alt="Preview"
-                style={{ maxWidth: "100%", borderRadius: "8px" }}
-              />
+          <label>Images (optional, you can select multiple)</label>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageChange}
+          />
+          {uploadingImages && <p>Uploading images...</p>}
+          {imageUrls.length > 0 && (
+            <div className="entry-images">
+              {imageUrls.map((url) => (
+                <img
+                  key={url}
+                  src={url}
+                  alt="Preview"
+                  className="entry-image"
+                />
+              ))}
             </div>
           )}
         </div>

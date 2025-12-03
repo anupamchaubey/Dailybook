@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getMyProfile, updateMyProfile } from "../api";
+import { uploadImageToCloudinary } from "../cloudinary";
 
 function MyProfilePage() {
   const [form, setForm] = useState({
@@ -9,6 +10,7 @@ function MyProfilePage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
 
@@ -36,6 +38,24 @@ function MyProfilePage() {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+  }
+
+  async function handleAvatarChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+    setInfo("");
+    try {
+      setUploadingAvatar(true);
+      const url = await uploadImageToCloudinary(file);
+      setForm((prev) => ({ ...prev, profilePicture: url }));
+      setInfo("Profile picture uploaded.");
+    } catch (err) {
+      setError(err.message || "Failed to upload profile picture");
+    } finally {
+      setUploadingAvatar(false);
+    }
   }
 
   async function handleSubmit(e) {
@@ -76,6 +96,7 @@ function MyProfilePage() {
             onChange={handleChange}
           />
         </div>
+
         <div className="form-group">
           <label>Bio</label>
           <textarea
@@ -85,16 +106,25 @@ function MyProfilePage() {
             onChange={handleChange}
           />
         </div>
+
         <div className="form-group">
-          <label>Profile picture URL</label>
-          <input
-            name="profilePicture"
-            value={form.profilePicture}
-            onChange={handleChange}
-          />
+          <label>Profile picture</label>
+          <input type="file" accept="image/*" onChange={handleAvatarChange} />
+          {uploadingAvatar && <p>Uploading...</p>}
+          {form.profilePicture && (
+            <div style={{ marginTop: "0.5rem" }}>
+              <img
+                src={form.profilePicture}
+                alt="Avatar preview"
+                className="avatar-large"
+              />
+            </div>
+          )}
         </div>
+
         <button type="submit" disabled={saving}>
-          {saving ? "Saving..." : "Save"}</button>
+          {saving ? "Saving..." : "Save"}
+        </button>
       </form>
     </section>
   );

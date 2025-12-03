@@ -1,4 +1,4 @@
-// cloudinary.js
+// src/cloudinary.js
 export async function uploadImageToCloudinary(file) {
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
@@ -24,5 +24,5 @@ export async function uploadImageToCloudinary(file) {
   }
 
   const data = await res.json();
-  return data.secure_url;
+  return data.secure_url; // final HTTPS image URL
 }
