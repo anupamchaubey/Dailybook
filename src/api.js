@@ -8,7 +8,6 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
     "Content-Type": "application/json",
   };
 
-  // Attach JWT token unless auth = false
   const token = localStorage.getItem("token");
   if (auth && token) {
     headers["Authorization"] = `Bearer ${token}`;
@@ -30,14 +29,12 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
   }
 
   if (!res.ok) {
-    // Try to extract a useful message from our GlobalExceptionHandler
     let message = "Request failed";
 
     if (data && typeof data === "object" && data.errors) {
       if (typeof data.errors === "string") {
         message = data.errors;
       } else {
-        // For field errors, show first value
         const firstKey = Object.keys(data.errors)[0];
         if (firstKey) {
           message = data.errors[firstKey];
@@ -47,7 +44,9 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
       message = data;
     }
 
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = res.status;   // 🔹 attach status
+    throw error;
   }
 
   return data;
