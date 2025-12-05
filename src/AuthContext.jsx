@@ -4,12 +4,28 @@ import { getMyProfile, loginApi } from "./api";
 
 const AuthContext = createContext(null);
 
+function decodeTokenPayload(token) {
+  try {
+    const payloadBase64 = token.split(".")[1];
+    const json = atob(payloadBase64);
+    return JSON.parse(json);
+  } catch (e) {
+    console.error("Failed to decode JWT", e);
+    return null;
+  }
+}
+
+function isTokenExpired(token) {
+  const payload = decodeTokenPayload(token);
+  if (!payload || !payload.exp) return true; // treat as expired if broken
+
+  // exp is in seconds → convert to ms
+  const expiresAtMs = payload.exp * 1000;
+  return Date.now() > expiresAtMs;
+}
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("token"));
-  const [tokenExpiresAt, setTokenExpiresAt] = useState(() => {
-    const raw = localStorage.getItem("tokenExpiresAt");
-    return raw ? Number(raw) : null;
-  });
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(!!token);
 
@@ -21,13 +37,10 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      if (!tokenExpiresAt || Date.now() > tokenExpiresAt) {
-        // expired or missing expiry → clear
-        localStorage.removeItem("token");
-        localStorage.removeItem("tokenExpiresAt");
-        setToken(null);
-        setTokenExpiresAt(null);
-        setUser(null);
+      // ✅ Use JWT's own exp claim
+      if (isTokenExpired(token)) {
+        console.log("Token expired based on JWT exp");
+        logoutInternal();
         setLoading(false);
         return;
       }
@@ -38,16 +51,10 @@ export function AuthProvider({ children }) {
       } catch (e) {
         console.error("Failed to load profile", e);
 
-        // ❗ Only logout on unauthorized
-        if (e.status === 401 || e.status === 403) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("tokenExpiresAt");
-          setToken(null);
-          setTokenExpiresAt(null);
-          setUser(null);
-        } else {
-          // For 500 / network issues, keep the token and just don't set user
-          // Optionally show a toast in the UI.
+        // ✅ Safer status extraction for Axios and others
+        const status = e?.response?.status ?? e.status;
+        if (status === 401 || status === 403) {
+          logoutInternal();
         }
       } finally {
         setLoading(false);
@@ -55,30 +62,38 @@ export function AuthProvider({ children }) {
     }
 
     loadProfile();
-  }, [token, tokenExpiresAt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  function logoutInternal() {
+    localStorage.removeItem("token");
+    setToken(null);
+    setUser(null);
+  }
 
   async function login(username, password) {
-    const { token: t, expiresAt } = await loginApi({ username, password });
+    const { token: t } = await loginApi({ username, password });
 
     localStorage.setItem("token", t);
-    localStorage.setItem("tokenExpiresAt", String(expiresAt));
-
     setToken(t);
-    setTokenExpiresAt(expiresAt);
+
+    // Optionally preload profile immediately
+    try {
+      const profile = await getMyProfile();
+      setUser(profile);
+    } catch (e) {
+      console.error("Failed to load profile right after login", e);
+    }
   }
 
   function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("tokenExpiresAt");
-    setToken(null);
-    setTokenExpiresAt(null);
-    setUser(null);
+    logoutInternal();
   }
 
   const value = {
     token,
     user,
-    isAuthenticated: !!token && !!tokenExpiresAt && Date.now() < tokenExpiresAt,
+    isAuthenticated: !!token && !isTokenExpired(token),
     loading,
     login,
     logout,
