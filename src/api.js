@@ -1,194 +1,258 @@
 // src/api.js
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://dailybook-x50p.onrender.com";
+const API_BASE_URL = "https://dailybook-x50p.onrender.com";
 
-// ---- Internal generic request helper ----
-async function request(path, { method = "GET", body, auth = true } = {}) {
-  const headers = {
-    "Content-Type": "application/json",
+let authToken = null;
+let authExpiresAt = null;
+
+function loadAuthFromStorage() {
+  const token = localStorage.getItem("authToken");
+  const expiresAt = localStorage.getItem("authExpiresAt");
+  if (token && expiresAt) {
+    authToken = token;
+    authExpiresAt = Number(expiresAt);
+  }
+}
+loadAuthFromStorage();
+
+export function setAuth(token, expiresAt) {
+  authToken = token;
+  authExpiresAt = expiresAt;
+  localStorage.setItem("authToken", token);
+  localStorage.setItem("authExpiresAt", String(expiresAt));
+}
+
+export function clearAuth() {
+  authToken = null;
+  authExpiresAt = null;
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("authExpiresAt");
+}
+
+export function getAuth() {
+  return { token: authToken, expiresAt: authExpiresAt };
+}
+
+/* ---------- helpers ---------- */
+
+function buildQuery(params = {}) {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") {
+      sp.append(k, v);
+    }
+  });
+  return sp.toString() ? `?${sp}` : "";
+}
+
+async function request(
+  path,
+  { method = "GET", body, headers = {} } = {},
+  requireAuth = false
+) {
+  if (requireAuth && !authToken) {
+    throw new Error("Not authenticated");
+  }
+
+  const finalHeaders = {
+    ...headers
   };
 
-  const token = localStorage.getItem("token");
-  if (auth && token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  // only set JSON header if not sending FormData
+  if (!(body instanceof FormData) && !finalHeaders["Content-Type"]) {
+    finalHeaders["Content-Type"] = "application/json";
+  }
+
+  if (requireAuth && authToken) {
+    finalHeaders.Authorization = `Bearer ${authToken}`;
   }
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
+    headers: finalHeaders,
+    body: body
+      ? body instanceof FormData
+        ? body
+        : JSON.stringify(body)
+      : undefined
   });
-
-  const contentType = res.headers.get("Content-Type") || "";
-  let data;
-
-  if (contentType.includes("application/json")) {
-    data = await res.json();
-  } else {
-    data = await res.text();
-  }
 
   if (!res.ok) {
-    let message = "Request failed";
-
-    if (data && typeof data === "object" && data.errors) {
-      if (typeof data.errors === "string") {
-        message = data.errors;
-      } else {
-        const firstKey = Object.keys(data.errors)[0];
-        if (firstKey) {
-          message = data.errors[firstKey];
-        }
-      }
-    } else if (typeof data === "string" && data.trim()) {
-      message = data;
-    }
-
-    const error = new Error(message);
-    error.status = res.status;   // 🔹 attach status
-    throw error;
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `HTTP ${res.status}`);
   }
 
-  return data;
+  const ct = res.headers.get("Content-Type") || "";
+  if (ct.includes("application/json")) return res.json();
+  return res.text();
 }
 
-// ============ AUTH ============
+/* ---------- AUTH ---------- */
 
-export async function registerApi({ username, email, password }) {
-  // POST /api/auth/register  → plain text ("User registration done ...")
-  return request("/api/auth/register", {
-    method: "POST",
-    body: { username, email, password },
-    auth: false,
-  });
-}
+export const authApi = {
+  register(data) {
+    return request("/api/auth/register", {
+      method: "POST",
+      body: data
+    });
+  },
 
-export async function loginApi({ username, password }) {
-  // POST /api/auth/login  → { token: "..." }
-  return request("/api/auth/login", {
-    method: "POST",
-    body: { username, password },
-    auth: false,
-  });
-}
-
-// ============ PROFILE (LOGGED-IN USER) ============
-
-export async function getMyProfile() {
-  // GET /api/profile
-  return request("/api/profile", {
-    method: "GET",
-  });
-}
-
-export async function updateMyProfile({ username, bio, profilePicture }) {
-  // PUT /api/profile
-  return request("/api/profile", {
-    method: "PUT",
-    body: { username, bio, profilePicture },
-  });
-}
-
-// ============ ENTRIES (PRIVATE – REQUIRE AUTH) ============
-
-export async function getMyEntries() {
-  // GET /api/entries
-  return request("/api/entries", {
-    method: "GET",
-  });
-}
-
-export async function getEntryById(id) {
-  // GET /api/entries/{id}
-  return request(`/api/entries/${id}`, {
-    method: "GET",
-  });
-}
-
-export async function createEntry(payload) {
-  // POST /api/entries
-  return request("/api/entries", {
-    method: "POST",
-    body: payload,
-  });
-}
-
-export async function updateEntry(id, payload) {
-  // PUT /api/entries/{id}
-  return request(`/api/entries/${id}`, {
-    method: "PUT",
-    body: payload,
-  });
-}
-
-export async function deleteEntry(id) {
-  // DELETE /api/entries/{id}
-  return request(`/api/entries/${id}`, {
-    method: "DELETE",
-  });
-}
-
-// ============ PUBLIC ENTRIES (NO AUTH REQUIRED) ============
-
-// Explore public posts
-export async function listPublicEntries({ page = 0, size = 10, tag } = {}) {
-  const params = new URLSearchParams();
-  params.set("page", page);
-  params.set("size", size);
-  if (tag) {
-    params.set("tag", tag);
+  async login(data) {
+    const res = await request("/api/auth/login", {
+      method: "POST",
+      body: data
+    });
+    setAuth(res.token, res.expiresAt);
+    return res;
   }
+};
 
-  // You have /api/public/entries in PublicEntryController
-  return request(`/api/public/entries?${params.toString()}`, {
-    method: "GET",
-    auth: false,
-  });
-}
+/* ---------- ENTRIES ---------- */
 
-// Search public posts by text
-export async function searchPublicEntries({ q, page = 0, size = 10 }) {
-  const params = new URLSearchParams();
-  params.set("q", q);
-  params.set("page", page);
-  params.set("size", size);
+export const entriesApi = {
+  createEntry(data) {
+    return request("/api/entries", { method: "POST", body: data }, true);
+  },
 
-  return request(`/api/public/entries/search?${params.toString()}`, {
-    method: "GET",
-    auth: false,
-  });
-}
+  getMyEntries() {
+    return request("/api/entries", {}, true);
+  },
 
-// List public entries by username (author page)
-export async function listPublicEntriesByUser(
-  username,
-  { page = 0, size = 10 } = {}
-) {
-  const params = new URLSearchParams();
-  params.set("page", page);
-  params.set("size", size);
+  getEntry(id) {
+    return request(`/api/entries/${id}`);
+  },
 
-  // GET /api/users/{username}/entries
-  return request(`/api/users/${encodeURIComponent(username)}/entries?${params.toString()}`, {
-    method: "GET",
-    auth: false,
-  });
-}
+  updateEntry(id, data) {
+    return request(`/api/entries/${id}`, { method: "PUT", body: data }, true);
+  },
 
-// ============ PUBLIC PROFILES ============
+  deleteEntry(id) {
+    return request(`/api/entries/${id}`, { method: "DELETE" }, true);
+  },
 
-export async function getUserProfile(username) {
-  // GET /api/profile/{username} (public)
-  return request(`/api/profile/${encodeURIComponent(username)}`, {
-    method: "GET",
-    auth: false,
-  });
-}
+  getPublicEntries({ page = 0, size = 10, tag } = {}) {
+    const q = buildQuery({ page, size, tag });
+    return request(`/api/entries/public${q}`);
+  },
 
-// Optional: search users (if you want to use it later)
-export async function searchUsers(query) {
-  return request(`/api/profile/search?q=${encodeURIComponent(query)}`, {
-    method: "GET",
-    auth: false,
-  });
-}
+  getPublicEntriesByUser(username, { page = 0, size = 10 } = {}) {
+    const q = buildQuery({ page, size });
+    return request(
+      `/api/entries/public/user/${encodeURIComponent(username)}${q}`
+    );
+  },
+
+  searchEntries({ q, page = 0, size = 10 } = {}) {
+    const query = buildQuery({ q, page, size });
+    return request(`/api/entries/public/search${query}`, {}, true);
+  },
+
+  getFeedEntries({ page = 0, size = 10, tag } = {}) {
+    const q = buildQuery({ page, size, tag });
+    return request(`/api/entries/feed${q}`);
+  }
+};
+
+/* ---------- FOLLOW ---------- */
+
+export const followApi = {
+  follow(username) {
+    return request(
+      `/api/follow/${encodeURIComponent(username)}`,
+      { method: "POST" },
+      true
+    );
+  },
+
+  unfollow(username) {
+    return request(
+      `/api/follow/${encodeURIComponent(username)}`,
+      { method: "DELETE" },
+      true
+    );
+  },
+
+  getMyFollowers() {
+    return request("/api/follow/me/followers", {}, true);
+  },
+
+  getMyFollowing() {
+    return request("/api/follow/me/following", {}, true);
+  },
+
+  getPendingRequests() {
+    return request("/api/follow/me/requests", {}, true);
+  },
+
+  approveRequest(username) {
+    return request(
+      `/api/follow/approve/${encodeURIComponent(username)}`,
+      { method: "POST" },
+      true
+    );
+  },
+
+  rejectRequest(username) {
+    return request(
+      `/api/follow/reject/${encodeURIComponent(username)}`,
+      { method: "DELETE" },
+      true
+    );
+  }
+};
+
+/* ---------- NOTIFICATIONS ---------- */
+
+export const notificationsApi = {
+  getNotifications({ page = 0, size = 10 } = {}) {
+    const q = buildQuery({ page, size });
+    return request(`/api/notifications${q}`, {}, true);
+  },
+
+  getUnreadCount() {
+    return request("/api/notifications/unread-count", {}, true);
+  },
+
+  markAsRead(id) {
+    return request(
+      `/api/notifications/${encodeURIComponent(id)}/read`,
+      { method: "POST" },
+      true
+    );
+  },
+
+  markAllAsRead() {
+    return request("/api/notifications/read-all", { method: "POST" }, true);
+  }
+};
+
+/* ---------- USERS / PROFILE ---------- */
+
+export const usersApi = {
+  getUserEntries(username, { page = 0, size = 10 } = {}) {
+    const q = buildQuery({ page, size });
+    return request(`/api/users/${encodeURIComponent(username)}/entries${q}`);
+  }
+};
+
+export const profileApi = {
+  getMyProfile() {
+    return request("/api/profile/me", {}, true);
+  },
+
+  updateMyProfile(data) {
+    return request(
+      "/api/profile/me",
+      { method: "PUT", body: data },
+      true
+    );
+  },
+
+  getProfile(username) {
+    return request(`/api/profile/${encodeURIComponent(username)}`);
+  },
+
+  searchProfiles(query) {
+    const q = buildQuery({ query });
+    return request(`/api/profile/search${q}`);
+  }
+};

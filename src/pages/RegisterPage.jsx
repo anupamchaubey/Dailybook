@@ -1,84 +1,102 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { registerApi } from "../api";
+import { useAuth } from "../auth/AuthContext.jsx";
 
 function RegisterPage() {
+  const { register } = useAuth();
   const navigate = useNavigate();
+
   const [form, setForm] = useState({
     username: "",
     email: "",
-    password: "",
+    password: ""
   });
-  const [error, setError] = useState("");
-  const [info, setInfo] = useState("");
+
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  function handleChange(e) {
-    setForm((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  }
+  const handleChange = (e) => {
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  };
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setInfo("");
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
 
     try {
-      setLoading(true);
-      const msg = await registerApi(form);
-      setInfo(msg || "Registered successfully. You can login now.");
-      setTimeout(() => navigate("/login"), 1500);
-    } catch (e1) {
-      setError(e1.message || "Registration failed");
+      const msg = await register(
+        form.username,
+        form.email,
+        form.password
+      );
+      setSuccess(msg || "Registration successful");
+      setTimeout(() => navigate("/login"), 1200);
+    } catch (err) {
+      setError(err.message || "Registration failed");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <section>
+    <div style={{ maxWidth: "320px" }}>
       <h1>Register</h1>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {info && <p style={{ color: "green" }}>{info}</p>}
 
-      <form onSubmit={handleSubmit} className="post-form">
-        <div className="form-group">
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      {success && <p style={{ color: "green" }}>{success}</p>}
+
+      <form onSubmit={handleSubmit}>
+        <div>
           <label>Username</label>
           <input
             name="username"
             value={form.username}
             onChange={handleChange}
+            required
+            style={{ width: "100%" }}
           />
         </div>
-        <div className="form-group">
+
+        <div style={{ marginTop: "0.5rem" }}>
           <label>Email</label>
           <input
             name="email"
+            type="email"
             value={form.email}
             onChange={handleChange}
-            type="email"
+            required
+            style={{ width: "100%" }}
           />
         </div>
-        <div className="form-group">
-          <label>Password (min 6 chars)</label>
+
+        <div style={{ marginTop: "0.5rem" }}>
+          <label>Password</label>
           <input
             name="password"
             type="password"
             value={form.password}
             onChange={handleChange}
+            required
+            style={{ width: "100%" }}
           />
         </div>
-        <button type="submit" disabled={loading}>
+
+        <button
+          type="submit"
+          disabled={loading}
+          style={{ marginTop: "0.75rem", width: "100%" }}
+        >
           {loading ? "Registering..." : "Register"}
         </button>
       </form>
 
-      <p>
-        Already registered? <Link to="/login">Login</Link>
+      <p style={{ marginTop: "0.5rem" }}>
+        Already have an account? <Link to="/login">Login</Link>
       </p>
-    </section>
+    </div>
   );
 }
 

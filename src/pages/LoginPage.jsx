@@ -1,65 +1,76 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../AuthContext";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext.jsx";
 
 function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [form, setForm] = useState({ username: "", password: "" });
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
+  const handleChange = (e) => {
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  };
 
-    if (!username.trim() || !password.trim()) {
-      setError("Username and password are required.");
-      return;
-    }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
     try {
-      setLoading(true);
-      await login(username.trim(), password);
+      await login(form.username, form.password);
       navigate("/");
-    } catch (e1) {
-      setError(e1.message || "Login failed");
+    } catch (err) {
+      setError(err.message || "Login failed");
+    } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <section>
+    <div style={{ maxWidth: "320px" }}>
       <h1>Login</h1>
+
       {error && <p style={{ color: "red" }}>{error}</p>}
 
-      <form onSubmit={handleSubmit} className="post-form">
-        <div className="form-group">
+      <form onSubmit={handleSubmit}>
+        <div>
           <label>Username</label>
           <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoFocus
+            name="username"
+            value={form.username}
+            onChange={handleChange}
+            required
+            style={{ width: "100%" }}
           />
         </div>
-        <div className="form-group">
+
+        <div style={{ marginTop: "0.5rem" }}>
           <label>Password</label>
           <input
+            name="password"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={form.password}
+            onChange={handleChange}
+            required
+            style={{ width: "100%" }}
           />
         </div>
-        <button type="submit" disabled={loading}>
+
+        <button
+          type="submit"
+          disabled={loading}
+          style={{ marginTop: "0.75rem", width: "100%" }}
+        >
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
 
-      <p>
-        No account? <Link to="/register">Register here</Link>
+      <p style={{ marginTop: "0.5rem" }}>
+        New user? <Link to="/register">Register</Link>
       </p>
-    </section>
+    </div>
   );
 }
 

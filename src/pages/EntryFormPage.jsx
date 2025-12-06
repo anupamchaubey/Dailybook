@@ -1,181 +1,200 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { createEntry, getEntryById, updateEntry } from "../api";
-import { uploadImageToCloudinary } from "../cloudinary";
+import { entriesApi } from "../api.js";
+import { uploadImageToCloudinary } from "../cloudinary.js";
 
-const VISIBILITY_OPTIONS = ["PUBLIC", "PRIVATE", "FOLLOWERS_ONLY"];
+const defaultEntry = {
+  title: "",
+  content: "",
+  tags: [],
+  visibility: "PUBLIC",
+  imageUrls: []
+};
 
 function EntryFormPage({ mode }) {
-  const isEdit = mode === "edit";
+  const isCreate = mode === "create";
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [entry, setEntry] = useState(defaultEntry);
   const [tagsInput, setTagsInput] = useState("");
-  const [visibility, setVisibility] = useState("PRIVATE");
-  const [imageUrls, setImageUrls] = useState([]);
-  const [uploadingImages, setUploadingImages] = useState(false);
+  const [imagesInput, setImagesInput] = useState(""); // comma-separated URL text
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(isEdit);
-
+  // Load existing entry for edit mode
   useEffect(() => {
-    async function load() {
-      if (!isEdit) return;
-      try {
-        setLoading(true);
-        const entry = await getEntryById(id);
-        setTitle(entry.title || "");
-        setContent(entry.content || "");
-        setVisibility(entry.visibility || "PRIVATE");
-        setTagsInput((entry.tags || []).join(", "));
-        setImageUrls(entry.imageUrls || []); // multiple images
-      } catch (e) {
-        setError(e.message || "Failed to load entry");
-      } finally {
-        setLoading(false);
-      }
+    if (!isCreate && id) {
+      entriesApi
+        .getEntry(id)
+        .then((data) => {
+          setEntry({
+            title: data.title,
+            content: data.content,
+            tags: data.tags || [],
+            visibility: data.visibility,
+            imageUrls: data.imageUrls || []
+          });
+          setTagsInput((data.tags || []).join(","));
+          setImagesInput((data.imageUrls || []).join(","));
+        })
+        .catch((err) =>
+          setError(err.message || "Failed to load entry")
+        );
     }
-    load();
-  }, [id, isEdit]);
+  }, [id, isCreate]);
 
-  function parseTags(input) {
-    return input
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
-  }
+  const handleChange = (e) => {
+    setEntry((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
 
-  async function handleImageChange(e) {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+  // Handle Cloudinary upload when user chooses a file
+  const handleImageFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
+    setError(null);
+    setUploading(true);
     try {
-      setUploadingImages(true);
-      const urls = await Promise.all(
-        files.map((file) => uploadImageToCloudinary(file))
+      const url = await uploadImageToCloudinary(file);
+
+      // Update entry.imageUrls and the comma-separated text field
+      setEntry((prev) => ({
+        ...prev,
+        imageUrls: [...(prev.imageUrls || []), url]
+      }));
+      setImagesInput((prev) =>
+        prev ? `${prev},${url}` : url
       );
-      setImageUrls((prev) => [...prev, ...urls]);
     } catch (err) {
       setError(err.message || "Image upload failed");
     } finally {
-      setUploadingImages(false);
+      setUploading(false);
+      // Clear file input so same file can be reselected if needed
+      e.target.value = "";
     }
-  }
+  };
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-
-    if (!title.trim() || !content.trim()) {
-      setError("Title and content are required.");
-      return;
-    }
-
-    const tags = parseTags(tagsInput);
+    setError(null);
 
     const payload = {
-      title: title.trim(),
-      content: content.trim(),
-      tags,
-      visibility,
-      imageUrls, // send list of URLs to backend
+      ...entry,
+      tags: tagsInput
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      imageUrls: imagesInput
+        .split(",")
+        .map((i) => i.trim())
+        .filter(Boolean)
     };
 
     try {
-      setSaving(true);
-      if (isEdit) {
-        await updateEntry(id, payload);
+      let result;
+      if (isCreate) {
+        result = await entriesApi.createEntry(payload);
       } else {
-        await createEntry(payload);
+        result = await entriesApi.updateEntry(id, payload);
       }
-      navigate("/me/entries");
-    } catch (e1) {
-      setError(e1.message || "Failed to save entry");
-      setSaving(false);
+      navigate(`/entries/${result.id}`);
+    } catch (err) {
+      setError(err.message || "Save failed");
     }
-  }
-
-  if (loading) return <p>Loading...</p>;
+  };
 
   return (
-    <section>
-      <h1>{isEdit ? "Edit entry" : "New entry"}</h1>
+    <div>
+      <h1>{isCreate ? "Create Entry" : "Edit Entry"}</h1>
+
       {error && <p style={{ color: "red" }}>{error}</p>}
 
-      <form onSubmit={handleSubmit} className="post-form">
+      <form onSubmit={handleSubmit} style={{ maxWidth: "600px" }}>
         <div className="form-group">
           <label>Title</label>
           <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Entry title"
+            name="title"
+            value={entry.title}
+            onChange={handleChange}
+            required
           />
         </div>
 
         <div className="form-group">
           <label>Content</label>
           <textarea
+            name="content"
             rows={8}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Write your thoughts..."
+            value={entry.content}
+            onChange={handleChange}
+            required
           />
         </div>
 
         <div className="form-group">
-          <label>Tags (comma-separated)</label>
+          <label>Tags (comma separated)</label>
           <input
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
-            placeholder="e.g. life, coding, diary"
           />
         </div>
 
         <div className="form-group">
           <label>Visibility</label>
           <select
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value)}
+            name="visibility"
+            value={entry.visibility}
+            onChange={handleChange}
           >
-            {VISIBILITY_OPTIONS.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
+            <option value="PUBLIC">PUBLIC</option>
+            <option value="PRIVATE">PRIVATE</option>
+            <option value="FOLLOWERS_ONLY">FOLLOWERS_ONLY</option>
           </select>
         </div>
 
+        {/* Manual URLs (optional) */}
         <div className="form-group">
-          <label>Images (optional, you can select multiple)</label>
+          <label>Image URLs (comma separated)</label>
+          <input
+            value={imagesInput}
+            onChange={(e) => setImagesInput(e.target.value)}
+          />
+        </div>
+
+        {/* Upload to Cloudinary */}
+        <div className="form-group">
+          <label>Upload image</label>
           <input
             type="file"
             accept="image/*"
-            multiple
-            onChange={handleImageChange}
+            onChange={handleImageFileChange}
           />
-          {uploadingImages && <p>Uploading images...</p>}
-          {imageUrls.length > 0 && (
-            <div className="entry-images">
-              {imageUrls.map((url) => (
-                <img
-                  key={url}
-                  src={url}
-                  alt="Preview"
-                  className="entry-image"
-                />
-              ))}
-            </div>
-          )}
+          {uploading && <p>Uploading image...</p>}
         </div>
 
-        <button type="submit" disabled={saving}>
-          {saving ? "Saving..." : isEdit ? "Update" : "Create"}
+        {/* Preview currently attached images */}
+        {entry.imageUrls && entry.imageUrls.length > 0 && (
+          <div className="entry-images">
+            {entry.imageUrls.map((url) => (
+              <img
+                key={url}
+                src={url}
+                alt="entry"
+                className="entry-image"
+              />
+            ))}
+          </div>
+        )}
+
+        <button type="submit" disabled={uploading}>
+          {isCreate ? "Create" : "Update"}
         </button>
       </form>
-    </section>
+    </div>
   );
 }
 

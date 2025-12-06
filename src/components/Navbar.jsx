@@ -1,47 +1,60 @@
 import React from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../AuthContext";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext.jsx";
+import NotificationBell from "./NotificationBell.jsx";
 
 function Navbar() {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
-  function handleLogout() {
+  const handleLogout = () => {
     logout();
-    navigate("/");
-  }
+    navigate("/login");
+  };
 
   return (
-    <header className="navbar">
-      <div className="navbar-left">
-        <Link to="/" className="brand">
-          DailyBook
+    <nav
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0.75rem 1.5rem",
+        borderBottom: "1px solid #ddd",
+        marginBottom: "1rem"
+      }}
+    >
+      <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+        <Link to="/" style={{ fontWeight: "bold", textDecoration: "none" }}>
+          Dailybook
         </Link>
-      </div>
-      <nav className="navbar-right">
-        <NavLink to="/">Explore</NavLink>
+
+        <Link to="/explore">Explore</Link>
 
         {isAuthenticated && (
+          <Link to="/me/entries">
+            My Entries
+          </Link>
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+        {isAuthenticated && <NotificationBell />}
+
+        {isAuthenticated ? (
           <>
-            <NavLink to="/me/entries">My Entries</NavLink>
-            <NavLink to="/me/entries/new">New Entry</NavLink>
-            <NavLink to="/me/profile">
-              {user?.username ? `@${user.username}` : "Profile"}
-            </NavLink>
-            <button onClick={handleLogout} className="link-button">
+            <Link to="/me/follow-requests">Requests</Link>
+            <button type="button" onClick={handleLogout}>
               Logout
             </button>
           </>
-        )}
-
-        {!isAuthenticated && (
+        ) : (
           <>
-            <NavLink to="/login">Login</NavLink>
-            <NavLink to="/register">Register</NavLink>
+            <Link to="/login">Login</Link>
+            <Link to="/register">Register</Link>
           </>
         )}
-      </nav>
-    </header>
+      </div>
+    </nav>
   );
 }
 

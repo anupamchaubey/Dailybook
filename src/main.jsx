@@ -1,9 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import App from "./App";
-import { AuthProvider } from "./AuthContext";
-import "./index.css"; // make sure your CSS is imported
+import "./index.css";
+import App from "./App.jsx";
+import { AuthProvider } from "./AuthContext.jsx";   
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
