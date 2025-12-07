@@ -23,7 +23,15 @@ function App() {
 
       <main style={{ maxWidth: "900px", margin: "0 auto", padding: "1rem" }}>
         <Routes>
-          <Route path="/" element={<FeedPage />} />
+          <Route
+            path="/"
+              element={
+              <ProtectedRoute>
+                <FeedPage />
+              </ProtectedRoute>
+              }
+          />
+
 
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

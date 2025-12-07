@@ -1,65 +1,101 @@
+// src/components/Pagination.jsx
 import React from "react";
-import { Link } from "react-router-dom";
-import VisibilityBadge from "./VisibilityBadge.jsx";
 
-function EntryCard({ entry }) {
-  if (!entry) return null;
+function Pagination({ page, totalPages, onChange }) {
+  // page is 0-based (from backend Page.number)
+  const currentPage = typeof page === "number" ? page : 0;
 
-  return (
-    <article
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: "6px",
-        padding: "0.75rem",
-        marginBottom: "0.75rem"
-      }}
-    >
-      <header
+  if (!totalPages || totalPages <= 1) {
+    // No need to show pagination for 0 or 1 page
+    return null;
+  }
+
+  const handlePrev = () => {
+    if (currentPage > 0) {
+      onChange(currentPage - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentPage < totalPages - 1) {
+      onChange(currentPage + 1);
+    }
+  };
+
+  const handleGoto = (p) => {
+    if (p !== currentPage) {
+      onChange(p);
+    }
+  };
+
+  // Simple page number buttons (1, 2, 3, ...)
+  const pageButtons = [];
+  for (let i = 0; i < totalPages; i++) {
+    pageButtons.push(
+      <button
+        key={i}
+        type="button"
+        onClick={() => handleGoto(i)}
+        disabled={i === currentPage}
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "start"
+          margin: "0 0.15rem",
+          padding: "0.25rem 0.5rem",
+          borderRadius: "4px",
+          border: "1px solid #ccc",
+          background: i === currentPage ? "#eee" : "white",
+          cursor: i === currentPage ? "default" : "pointer"
         }}
       >
-        <div>
-          <Link to={`/entries/${entry.id}`} style={{ fontWeight: "bold" }}>
-            {entry.title}
-          </Link>
-          <div style={{ fontSize: "0.85rem", color: "#555" }}>
-            by{" "}
-            <Link to={`/users/${entry.authorUsername}`}>
-              {entry.authorUsername}
-            </Link>{" "}
-            · {new Date(entry.createdAt).toLocaleString()}
-          </div>
-        </div>
+        {i + 1}
+      </button>
+    );
+  }
 
-        <VisibilityBadge visibility={entry.visibility} />
-      </header>
+  return (
+    <div
+      style={{
+        marginTop: "0.75rem",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "0.25rem",
+        flexWrap: "wrap"
+      }}
+    >
+      <button
+        type="button"
+        onClick={handlePrev}
+        disabled={currentPage === 0}
+        style={{
+          padding: "0.25rem 0.5rem",
+          borderRadius: "4px",
+          border: "1px solid #ccc",
+          background: "white",
+          cursor: currentPage === 0 ? "not-allowed" : "pointer"
+        }}
+      >
+        Prev
+      </button>
 
-      <p style={{ marginTop: "0.5rem" }}>
-        {entry.content?.length > 200
-          ? `${entry.content.slice(0, 200)}...`
-          : entry.content}
-      </p>
+      {pageButtons}
 
-      {entry.tags && entry.tags.length > 0 && (
-        <div
-          style={{
-            marginTop: "0.5rem",
-            fontSize: "0.85rem",
-            color: "#444"
-          }}
-        >
-          {entry.tags.map((tag) => (
-            <span key={tag} style={{ marginRight: "0.5rem" }}>
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
-    </article>
+      <button
+        type="button"
+        onClick={handleNext}
+        disabled={currentPage >= totalPages - 1}
+        style={{
+          padding: "0.25rem 0.5rem",
+          borderRadius: "4px",
+          border: "1px solid #ccc",
+          background: "white",
+          cursor:
+            currentPage >= totalPages - 1 ? "not-allowed" : "pointer"
+        }}
+      >
+        Next
+      </button>
+    </div>
   );
 }
 
-export default EntryCard;
+export default Pagination;
