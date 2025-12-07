@@ -15,6 +15,7 @@ import FollowersPage from "./pages/FollowersPage.jsx";
 import FollowRequestsPage from "./pages/FollowRequestsPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
+import MyProfilePage from "./pages/MyProfilePage.jsx"; // ✅ IMPORTANT
 
 function App() {
   return (
@@ -23,14 +24,17 @@ function App() {
 
       <main style={{ maxWidth: "900px", margin: "0 auto", padding: "1rem" }}>
         <Routes>
+          {/* Home feed – needs login */}
           <Route
             path="/"
-              element={
+            element={
               <ProtectedRoute>
                 <FeedPage />
               </ProtectedRoute>
-              }
+            }
           />
+
+          {/* My own profile – /api/profile/me */}
           <Route
             path="/profile"
             element={
@@ -40,13 +44,14 @@ function App() {
             }
           />
 
-
-
+          {/* Auth */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
+          {/* Public explore */}
           <Route path="/explore" element={<ExplorePublicPage />} />
 
+          {/* Entries */}
           <Route path="/entries/:id" element={<EntryDetailPage />} />
           <Route
             path="/entries/new"
@@ -74,8 +79,17 @@ function App() {
             }
           />
 
-          <Route path="/users/:username" element={<ProfilePage />} />
+          {/* Other users' profiles */}
+          <Route
+            path="/users/:username"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
 
+          {/* Follow / notifications */}
           <Route
             path="/me/followers"
             element={
@@ -103,6 +117,7 @@ function App() {
             }
           />
 
+          {/* 404 */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>

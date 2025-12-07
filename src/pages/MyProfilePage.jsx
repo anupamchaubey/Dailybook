@@ -9,7 +9,9 @@ function MyProfilePage() {
     profileApi
       .getMyProfile()
       .then(setProfile)
-      .catch(err => setError(err.message || "Failed to load profile"));
+      .catch((err) =>
+        setError(err.message || "Failed to load profile")
+      );
   }, []);
 
   if (error) return <p style={{ color: "red" }}>{error}</p>;
@@ -27,9 +29,22 @@ function MyProfilePage() {
         />
       )}
 
-      {profile.bio && <p>{profile.bio}</p>}
+      {profile.bio && (
+        <p style={{ marginTop: "0.5rem" }}>{profile.bio}</p>
+      )}
 
-      <p>Joined {new Date(profile.joinedAt).toLocaleString()}</p>
+      {profile.joinedAt && (
+        <p
+          style={{
+            fontSize: "0.85rem",
+            color: "#555",
+            marginTop: "0.25rem"
+          }}
+        >
+          Joined{" "}
+          {new Date(profile.joinedAt).toLocaleString()}
+        </p>
+      )}
     </div>
   );
 }
